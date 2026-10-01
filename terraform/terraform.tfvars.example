@@ -1,0 +1,7 @@
+aws_region         = "us-east-1"
+project_name       = "lumina"
+environment        = "dev"
+bucket_bronze_name = "lumina-bronze-xyz"
+bucket_silver_name = "lumina-silver-xyz"
+script_bucket_id   = "lumina-athena-results-xyz"
+enable_s3_trigger  = true

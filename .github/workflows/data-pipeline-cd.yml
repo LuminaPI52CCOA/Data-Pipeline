@@ -1,0 +1,75 @@
+name: "Data Pipeline CD (Deploy Rapido de Artefatos)"
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Artefato para atualizar"
+        required: true
+        type: choice
+        options:
+          - "lambda"
+          - "glue-script"
+          - "ambos"
+      environment:
+        description: "Ambiente de destino"
+        required: true
+        type: choice
+        options:
+          - "dev"
+          - "prod"
+      script_bucket:
+        description: "Nome do Bucket S3 de scripts (apenas se target for glue-script ou ambos)"
+        required: false
+        type: string
+        default: ""
+      aws_access_key_id:
+        description: "AWS Access Key ID (Lab)"
+        required: true
+        type: string
+      aws_secret_access_key:
+        description: "AWS Secret Access Key"
+        required: true
+        type: string
+      aws_session_token:
+        description: "AWS Session Token"
+        required: true
+        type: string
+
+jobs:
+  deploy:
+    name: "Atualizar Artefato (${{ inputs.target }} em ${{ inputs.environment }})"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do Repositorio
+        uses: actions/checkout@v4
+
+      - name: Autenticar na AWS (Credenciais do Lab)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ inputs.aws_access_key_id }}
+          aws-secret-access-key: ${{ inputs.aws_secret_access_key }}
+          aws-session-token: ${{ inputs.aws_session_token }}
+          aws-region: "us-east-1"
+
+      - name: Empacotar e Atualizar Codigo da Lambda
+        if: ${{ inputs.target == 'lambda' || inputs.target == 'ambos' }}
+        run: |
+          mkdir -p dist
+          cd src/lambda_extracao
+          zip -r ../../dist/lambda_extracao.zip . -x "*__pycache__*"
+          cd ../..
+          FUNCTION_NAME="lumina-extracao-sisagua-${{ inputs.environment }}"
+          echo "Atualizando codigo da Lambda $FUNCTION_NAME..."
+          aws lambda update-function-code \
+            --function-name "$FUNCTION_NAME" \
+            --zip-file fileb://dist/lambda_extracao.zip
+          echo "✅ Codigo da Lambda atualizado com sucesso!"
+
+      - name: Atualizar Script do Glue no S3
+        if: ${{ (inputs.target == 'glue-script' || inputs.target == 'ambos') && inputs.script_bucket != '' }}
+        run: |
+          SCRIPT_KEY="scripts/lumina-bronze-to-silver-${{ inputs.environment }}.py"
+          echo "Enviando script PySpark para s3://${{ inputs.script_bucket }}/$SCRIPT_KEY..."
+          aws s3 cp src/glue_transformacao/job.py "s3://${{ inputs.script_bucket }}/$SCRIPT_KEY"
+          echo "✅ Script do Glue atualizado no S3 com sucesso!"
