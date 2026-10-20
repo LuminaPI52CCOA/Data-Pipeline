@@ -3,6 +3,10 @@ from unittest.mock import patch, MagicMock
 import os
 import sys
 
+# Garante regiao padrao nos ambientes de CI/CD para evitar NoRegionError
+os.environ.setdefault("AWS_DEFAULT_REGION", "us-east-1")
+os.environ.setdefault("AWS_REGION", "us-east-1")
+
 # Adiciona o diretorio src/lambda_extracao ao path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src/lambda_extracao')))
 

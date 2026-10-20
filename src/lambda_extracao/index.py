@@ -9,8 +9,9 @@ from zoneinfo import ZoneInfo
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-s3_client = boto3.client('s3')
-glue_client = boto3.client('glue')
+AWS_REGION = os.environ.get("AWS_REGION", os.environ.get("AWS_DEFAULT_REGION", "us-east-1"))
+s3_client = boto3.client('s3', region_name=AWS_REGION)
+glue_client = boto3.client('glue', region_name=AWS_REGION)
 
 # URLs de dados abertos do SISAGUA
 URL_SEMESTRAL = "https://dados.gov.br/dataset/.../controle_semestral_2026.csv"
