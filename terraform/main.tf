@@ -41,6 +41,7 @@ resource "aws_lambda_function" "extracao_sisagua" {
   environment {
     variables = {
       BUCKET_BRONZE = var.bucket_bronze_name
+      GLUE_JOB_NAME = aws_glue_job.job.name
       TZ            = "America/Sao_Paulo"
     }
   }
@@ -113,26 +114,10 @@ resource "aws_glue_job" "job" {
   }
 }
 
-# EventBridge Trigger quando objeto e gravado no S3 Bronze
-resource "aws_cloudwatch_event_rule" "s3_trigger" {
-  count       = var.enable_s3_trigger ? 1 : 0
-  name        = "${var.project_name}-glue-s3-trigger-${var.environment}"
-  description = "Dispara Glue Job quando arquivos forem gravados no bucket Bronze"
+# ==============================================================================
+# 3. Orquestração da Pipeline: A Lambda de extração (index.py) dispara o Glue Job
+# diretamente via Boto3 (glue:StartJobRun) logo após gravar os CSVs no S3 Bronze.
+# Isso elimina dependência de EventBridge direto no Job e evita disparos acidentais
+# provocados pelos logs do Fluent Bit no mesmo bucket.
+# ==============================================================================
 
-  event_pattern = jsonencode({
-    "source" : ["aws.s3"],
-    "detail-type" : ["Object Created"],
-    "detail" : {
-      "bucket" : {
-        "name" : [var.bucket_bronze_name]
-      }
-    }
-  })
-}
-
-resource "aws_cloudwatch_event_target" "glue_target" {
-  count    = var.enable_s3_trigger ? 1 : 0
-  rule     = aws_cloudwatch_event_rule.s3_trigger[0].name
-  arn      = aws_glue_job.job.arn
-  role_arn = data.aws_iam_role.lab_role.arn
-}

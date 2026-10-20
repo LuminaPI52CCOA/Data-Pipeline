@@ -25,6 +25,19 @@ class TestLambdaExtracao(unittest.TestCase):
             # Garante que 2 arquivos foram gravados no S3 (semestral e mensal)
             self.assertEqual(mock_s3.put_object.call_count, 2)
 
+    @patch('index.glue_client')
+    @patch('index.s3_client')
+    def test_handler_com_glue_job_dispara_start_job_run(self, mock_s3, mock_glue):
+        mock_glue.start_job_run.return_value = {"JobRunId": "jr_test_12345"}
+        with patch.dict(os.environ, {
+            "BUCKET_BRONZE": "lumina-bronze-test",
+            "GLUE_JOB_NAME": "lumina-bronze-to-silver-test"
+        }):
+            response = index.handler({}, {})
+            self.assertEqual(response["statusCode"], 200)
+            mock_glue.start_job_run.assert_called_once_with(JobName="lumina-bronze-to-silver-test")
+            self.assertIn("jr_test_12345", response["body"])
+
     @patch('index.s3_client')
     def test_download_and_upload_to_s3_chama_put_object(self, mock_s3):
         index.download_and_upload_to_s3("http://exemplo.com/teste.csv", "meu-bucket", "caminho/arquivo.csv")
@@ -35,3 +48,4 @@ class TestLambdaExtracao(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+

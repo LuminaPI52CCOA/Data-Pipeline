@@ -10,6 +10,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 s3_client = boto3.client('s3')
+glue_client = boto3.client('glue')
 
 # URLs de dados abertos do SISAGUA
 URL_SEMESTRAL = "https://dados.gov.br/dataset/.../controle_semestral_2026.csv"
@@ -47,7 +48,24 @@ def handler(event, context):
     key_mensal = f"sisagua/controle_mensal/{mes_atual}/controle_mensal.csv"
     download_and_upload_to_s3(URL_MENSAL, bucket_bronze, key_mensal)
 
+    # 3. Dispara Glue Job (Bronze -> Silver) se configurado
+    glue_job_name = os.environ.get("GLUE_JOB_NAME")
+    job_run_id = None
+    if glue_job_name:
+        try:
+            logger.info(f"Disparando Glue Job de transformacao: {glue_job_name}...")
+            response = glue_client.start_job_run(JobName=glue_job_name)
+            job_run_id = response.get("JobRunId")
+            logger.info(f"Glue Job disparado com sucesso. JobRunId: {job_run_id}")
+        except Exception as e:
+            logger.error(f"Aviso: Nao foi possivel iniciar o Glue Job {glue_job_name}. Detalhes: {e}")
+
     return {
         "statusCode": 200,
-        "body": json.dumps({"status": "success", "message": "Extracao finalizada e salva no Bronze."})
+        "body": json.dumps({
+            "status": "success",
+            "message": "Extracao finalizada e salva no Bronze.",
+            "glue_job_name": glue_job_name,
+            "glue_job_run_id": job_run_id
+        })
     }

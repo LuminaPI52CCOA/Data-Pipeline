@@ -39,8 +39,8 @@ variable "schedule_expression" {
 
 variable "enable_s3_trigger" {
   type        = bool
-  default     = true
-  description = "Habilitar disparo automatico do Glue Job a partir de eventos do S3 Bronze"
+  default     = false
+  description = "Descontinuado: Glue Job e acionado diretamente pela Lambda de extracao via Boto3"
 }
 
 variable "glue_version" {
