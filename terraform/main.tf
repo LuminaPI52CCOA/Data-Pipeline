@@ -42,7 +42,6 @@ resource "aws_lambda_function" "extracao_sisagua" {
     variables = {
       BUCKET_BRONZE = var.bucket_bronze_name
       GLUE_JOB_NAME = aws_glue_job.job.name
-      AWS_REGION    = var.aws_region
       TZ            = "America/Sao_Paulo"
     }
   }
